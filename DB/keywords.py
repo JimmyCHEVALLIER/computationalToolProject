@@ -20,7 +20,7 @@ Tools:
 import sqlite3
 import os.path
 import sys
-from mapReduce import TFIDF
+from DB.mapReduce import TFIDF
 
 dbname = open("db_name.txt", "r").read()  # get the name of the db
 
@@ -48,9 +48,12 @@ for row in c:
     moviePlot = row[1]
     #print("movieID =", movieID)  # debugging
     #print("moviePlot =", moviePlot)  # debugging
-    #print(movieID + "||" + moviePlot)
-    result = tfidf(movieID + "||" + moviePlot)
-    print(result)
+    #print(movieID + "||" + moviePlot)  # debugging
+
+    #result = tfidf(movieID + "||" + moviePlot)
+    #print(result)
+    tfidf(movieID + "||" + moviePlot)
+
 
 conn.close()
 
