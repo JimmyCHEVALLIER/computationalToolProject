@@ -2,13 +2,20 @@ import wikipedia
 from bs4 import BeautifulSoup
 import re
 import urllib.parse
+import string
+import json
 
 def getWikiArticle(strTitle):
+    contentDict = {}
+    htmlElements = None
     res = wikipedia.WikipediaPage(title=strTitle) # get HTML content of the article
-    soup = BeautifulSoup(res.html(), 'html.parser')
-    parsedTable = [[th.text, td.get_text("|")] for line in soup.find("table", {"class": "infobox vevent"}).find_all('tr') for th in line('th') for td in line('td')]
-    contentDict = {str(item[0]): list(filter(lambda x: x not in ['(', ' (', '', ' ', ')', ' )', ', '], re.sub(r" ?\([^)]+\)", "", re.sub(r" ?\[[^)]+\]", "", item[1:][0])).replace(r"\(.*\)", "").replace("\n", "").replace("\xa0", " ").split("|"))) for item in parsedTable}
-    contentDict["Plot"] = res.section("Plot") # append plot
+    if "pageid" in res.__dict__.keys():
+        soup = BeautifulSoup(res.html(), 'html.parser')
+        htmlElements = soup.find("table", {"class": "infobox vevent"})
+    if htmlElements:
+        parsedTable = [[th.text, td.get_text("|")] for line in htmlElements.find_all('tr') for th in line('th') for td in line('td')]
+        contentDict = {str(item[0]): list(filter(lambda x: x not in ['(', ' (', '', ' ', ')', ' )', ', '], re.sub(r" ?\([^)]+\)", "", re.sub(r" ?\[[^)]+\]", "", item[1:][0])).replace(r"\(.*\)", "").replace("\n", "").replace("\xa0", " ").split("|"))) for item in parsedTable}
+        contentDict["Plot"] = res.section("Plot") # append plot
     return contentDict
 
 def getWikiCategorie(strTitle):
@@ -38,9 +45,31 @@ def getWikiCategorie(strTitle):
 # create a file for each list with the data
 
 count = 0
-for elem in getWikiCategorie('List of films: B'):
-    print(count)
-    res = wikipedia.WikipediaPage(title=elem)
-    count+=1
+res = {}
+
+#generate list of letter accordingly to twitter category A,B,U-W,numbers...
+lists = list(string.ascii_lowercase[:9].upper())
+lists.append(['J-K','N-O','Q-R','U-W','X-Z','numbers'])
+lists.append(list(string.ascii_lowercase[11:13].upper()))
+lists.append(list(string.ascii_lowercase[15].upper()))
+lists.append(list(string.ascii_lowercase[18:20].upper()))
+lists = [item for sublist in lists for item in sublist]
+lists= sorted(lists)
+print(lists)
+
+
+for element in lists[:13]: #[13:] replace by this to get the second part
+    category = 'List of films: '+ element
+    print("==========> Category -> _", element)
+    for elem in getWikiCategorie(category):
+        page = getWikiArticle(elem)
+        if page != {}:
+            res[elem] = getWikiArticle(elem)
+            count+=1
+            print('count-> ', count, 'name->', elem)
+
+    with open('/MOVIES/_' + element + '.txt', 'w') as file:
+        file.write(json.dumps(res))  # use `json.loads` to do the reverse
+
 
 print("done")
