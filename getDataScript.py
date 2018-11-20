@@ -12,7 +12,7 @@ def getWikiArticle(strTitle):
     return contentDict
 
 def getWikiCategorie(strTitle):
-    res = wikipedia.WikipediaPage(title=strTitle)  # get HTML content of the article 
+    res = wikipedia.WikipediaPage(title=strTitle)  # get HTML content of the article
     soup = BeautifulSoup(res.html(), 'html.parser')
     tags = [tag('a') for tag in soup.find_all('li')]
     data = []
@@ -29,7 +29,8 @@ def getWikiCategorie(strTitle):
     return data
 
 #print(getWikiArticle('BABO'))
-#res = wikipedia.WikipediaPage(title="Bitters_and_Blue_Ruin")  # get HTML content of the article 
+#res = wikipedia.WikipediaPage(title="Bitters_and_Blue_Ruin")  # get HTML content of the article
+
 #print(getWikiCategorie('List of films: B'))
 
 # create a big list of all name and store it
