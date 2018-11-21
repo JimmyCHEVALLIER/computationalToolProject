@@ -20,7 +20,11 @@ Tools:
 import sqlite3
 import os.path
 import sys
-from DB.mapReduce import TFIDF
+# from script import class
+from mapReduce import TFIDF
+#from . import mapReduce
+
+
 
 dbname = open("db_name.txt", "r").read()  # get the name of the db
 
@@ -37,8 +41,7 @@ c = conn.cursor()
 
 # function to calculate the TF-IDF value for each word in the movie plot
 def tfidf(mrjob):
-    result = TFIDF(mrjob)
-    return result
+    return mapReduce.TFIDF(mrjob)
 
 
 # iterate over the cursor itself
