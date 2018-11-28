@@ -59,20 +59,20 @@ lists= sorted(lists)
 print(lists)
 
 
-for element in lists[:13]: #[13:] replace by this to get the second part
+for element in lists[13:]: #[13:] replace by this to get the second part
     category = 'List of films: '+ element
     if os.path.exists(os.path.dirname(os.path.abspath(__file__))+ "/../_" + element + ".txt"):
         statinfo = os.stat(os.path.dirname(os.path.abspath(__file__))+ "/../_" + element + ".txt")
 
         if statinfo.st_size != 0:
-            f = open("_" + str(element) + ".txt", 'r')
+            f = open("../_" + str(element) + ".txt", 'r')
             res = json.load(f)
             for i in res.keys():
                 count += 1
                 print(count)
     else:
         os.mknod(os.path.dirname(os.path.abspath(__file__))+ "/../_" + element + ".txt")
-        f = open("_" + str(element) + ".txt", 'w')
+        f = open("../_" + str(element) + ".txt", 'w')
 
     print("==========> Category -> _", element)
     for elem in getWikiCategorie(category):
@@ -83,11 +83,11 @@ for element in lists[:13]: #[13:] replace by this to get the second part
                 count+=1
                 print('count-> ', count, 'name->', elem)
 
-                f = open('_' + element + '.txt', 'r+')
+                f = open('../_' + element + '.txt', 'r+')
                 f.truncate(0) # need '0' when using r+
                 f.close()
 
-                with open('_' + element + '.txt', 'w') as file:
+                with open('../_' + element + '.txt', 'w') as file:
                     file.write(json.dumps(res))  # use `json.loads` to do the reverse
 
 
