@@ -29,8 +29,14 @@ Tools:
 # tblKeywords.Keyword - to quickly find a keyword in the column and its movies
 
 import sqlite3
+import sys
+import os
 
 dbname = open("db_name.txt", "r").read()  # get the name of the db
+
+# check if db exists and ensure we do not just connect to an in-memory database
+if not os.path.isfile(dbname):
+    sys.exit("Error! The database does not exist")
 
 conn = sqlite3.connect(dbname)  # creates the db if it does not already exist
 c = conn.cursor()
@@ -71,7 +77,8 @@ c.execute("CREATE TABLE tblKeywords "
           "("
           "ID TEXT PRIMARY KEY, "
           "Keyword TEXT, "  # put an index on this column
-          "Movies TEXT"  # must contain a list of MovieIDs
+          "MovieID TEXT, "  # contains a movieID. This means that a movie will have several rows in this table
+          "tfidfVal REAL"  # contains the tfidf value for the keyword in the movie
           ");")
 
 # storing information from python objects in db:

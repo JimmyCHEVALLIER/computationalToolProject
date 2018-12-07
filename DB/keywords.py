@@ -1,7 +1,7 @@
 
 """""""""""""""""""""
 
-DATE: 13 NOV 2018
+DATE: 04 DEC 2018
 DESCRIPTION: 
 
 Script to find all keywords
@@ -15,107 +15,72 @@ Tools:
 
 """""""""""""""""""""
 
-# TODO: check that the system has all necessary packages installed
-
 import sqlite3
 import os
 import sys
-import ast
-# from script import class
-#from .mapReduce import TFIDF
-from mapReduce import TFIDF
+import uuid
+import datetime
+from mapReduce import TFIDF  # import MRJob class
 
+# get the db name
 dbname = open("db_name.txt", "r").read()  # get the name of the db
+print("-----> Using db:", dbname)
 
 # check if db exists
 if not os.path.isfile(dbname):
-    #raise ValueError("Error! The database does not exist")
     sys.exit("Error! The database does not exist")
 
 # if the database exists, then continue
 conn = sqlite3.connect(dbname)
 c = conn.cursor()
 
-c.execute("SELECT MovieID, MoviePlot FROM tblMovies;")
+# get data from db
+c.execute("SELECT movieid, movieplot FROM tblMovies WHERE movieid NOT IN (SELECT DISTINCT movieid FROM tblKeywords);")
 conn.commit()
-results = str(c.fetchall())  # store all the results from the db into a string
-#print("result from db =>", results)
+results = c.fetchall()  # format of items in results list: (movieid, movieplot) | each list item = a movie
+totalMovies = len(results)
+print("----->", totalMovies, "movie(s) will be processed")
 
-# insert the results into a temporary table
-f = open("mrJobInput.txt", "w")
-f.write(results)
-f.close()
+# write data from db to file, which serves as the input to the mrjob
+open('mrJobInput.txt', 'w').close()  # clear the file
+with open("mrJobInput.txt", "a") as f:
+    for item in results:
+        f.write(item[0] + "|||" + item[1].replace("\n", " ") + "|||" + str(totalMovies) + "\n")  #item0 = movieID, item1 = movieplot
+
+inputfile = 'mrJobInput.txt'  # name of file containing input
+output = []
+
+# todo: turn this into a generator?
+# run the mrjob programmatically
+mr_job = TFIDF(args=[inputfile, '-r', 'local'])  # pass input as the first arg
+with mr_job.make_runner() as runner:
+    starttime = datetime.datetime.now()
+    runner.run()
+    endtime = datetime.datetime.now()
+    for line in runner.stream_output():
+        key, value = mr_job.parse_output_line(line)
+        output.append((key, value))
 
 
-#mr_job = TFIDF()  # pass the string as input to the MRjob
-#runner = mr_job.make_runner()
-#runner.run()
-#runner.stream_output()
-#for line in runner.stream_output():
-    #key, value = mr_job.parse_output_line(line)
-    #print(key, value)
-
-# execute mrjob via terminal and output to file
-os.system("python3 mapReduce.py mrJobInput.txt > keywords.txt")
+print("-----> start time:", starttime)
+print("-----> end time:", endtime)
+print("-----> time it took to run the MRJob:", endtime - starttime)
+print("-----> items in output:", len(output))
 
 # drop the index on the keywords col
 c.execute("DROP INDEX IF EXISTS index_keywords")
 conn.commit()
 
-# read each line from the file and insert the keyword in the database
-# filtering here? Only take top 10 words or words over a certain score?
-f = open("keywords.txt", "r")
-for line in f:
-    id, value = line.split("\t")
-    value = float(value)  # cast tfidf value as float
-    id = ast.literal_eval(id)  # transform string to literal array
-    word = str(id[0])
-    movie = str(id[1])
+# insert keywords and tfidf value into db
+for item in output:
+    term = item[0][0]
+    movieID = item[0][1]
+    tfidfVal = item[1]
+    c.execute("INSERT INTO tblKeywords "
+              "VALUES ('" + str(uuid.uuid4()) + "', '" + term + "', '" + movieID + "', " + str(tfidfVal) + ");")
+conn.commit()
 
-    if value > 4.0:
-        #print("movie =>", movie, "| word =>", word, "| tfidf =>", value)  # debugging
-
-        c.execute("SELECT * FROM tblKeywords WHERE Keyword = '" + word + "';")
-        conn.commit()
-        result = c.fetchone()
-        if result:  # if the keyword already exists in the keywords table
-            print("Updating...", word)
-            c.execute("UPDATE tblKeywords SET Movies = Movies || '" + movie + ";' WHERE Keyword = '" + word + "';")  # update the row
-        else:
-            #print("INSERT INTO tblKeywords(Keyword, Movies) VALUES ('" + word + "', '" + movie + ";');")  # debugging
-            print("Inserting...", word)
-            c.execute("INSERT INTO tblKeywords(Keyword, Movies) VALUES ('" + word + "', '" + movie + ";');")  # else insert new row
-        conn.commit()
-f.close()
-
-# iterate over the cursor itself
-# THIS IS NOT GOING TO WORK AS THERE IS NO WAY OF COUNTING HOW MANY DOCUMENTS CONTAIN EACH WORD
-# IF WE EXECUTE THE MRJOB FOR EACH MOVIE ONE AT A TIME
-
-"""
-c.execute("SELECT MovieID, MoviePlot FROM tblMovies;")
-for row in c:
-    movieID = row[0]
-    moviePlot = row[1]
-    #print("movieID =", movieID)  # debugging
-    #print("moviePlot =", moviePlot)  # debugging
-    #print(movieID + "||" + moviePlot)  # debugging
-
-    #result = tfidf(movieID + "||" + moviePlot)
-    #print(result)
-    tfidf(movieID + "||" + moviePlot)
-"""
-
-# INSTEAD OF EXECUTING THE MRJOB FOR ONE MOVIE AT A TIME, WE CAN STORE ALL THE
-#c.execute("SELECT MovieID, MoviePlot FROM tblMovies;")
-#conn.commit()
-#results = c.fetchall()
-#print("results: ", results)
-#print("number of movies =", len(results))
-#keywords = TFIDF(results) # function to calculate the TF-IDF value for each word in the movie plot
-#print(keywords)
-
-# finish off by adding index to the keyword column
+# recreate index on the keyword column
 c.execute("CREATE INDEX index_keywords on tblKeywords(Keyword);")
 conn.commit()
 conn.close()
@@ -123,12 +88,49 @@ conn.close()
 
 
 """
+EXECUTION RESULTS
 
-# get list of movies and their keywords
-select tblMovies.moviename, tblkeywords.keyword 
-from tblmovies 
-inner join tblkeywords 
-    on tblmovies.movieid = replace(tblkeywords.movies,";","") 
-order by moviename, keyword;
+threshold = 12.0, executed on mac
+-----> start time: 2018-12-05 00:32:50.769653
+-----> end time: 2018-12-05 00:36:33.086376
+-----> time it took to run the MRJob: 0:03:42.316723
+-----> items in output: 140716
+
+threshold = 12.0, executed on mac
+-----> start time: 2018-12-06 09:54:59.549989
+-----> end time: 2018-12-06 09:58:33.263176
+-----> time it took to run the MRJob: 0:03:33.713187
+-----> items in output: 140716
+
+threshold = 11.0, executed on mac
+-----> start time: 2018-12-06 10:01:11.045846
+-----> end time: 2018-12-06 10:04:47.978221
+-----> time it took to run the MRJob: 0:03:36.932375
+-----> items in output: 155436
+
+threshold = 10.0, executed on mac
+-----> start time: 2018-12-06 10:13:42.372022
+-----> end time: 2018-12-06 10:17:00.858624
+-----> time it took to run the MRJob: 0:03:18.486602
+-----> items in output: 173545
+
+threshold = 8.0, executed on mac
+-----> start time: 2018-12-06 12:06:22.672401
+-----> end time: 2018-12-06 12:09:40.866823
+-----> time it took to run the MRJob: 0:03:18.194422
+-----> items in output: 300309
+
+threshold = 7.0, executed on mac
+-----> start time: 2018-12-06 12:12:19.325666
+-----> end time: 2018-12-06 12:15:41.730532
+-----> time it took to run the MRJob: 0:03:22.404866
+-----> items in output: 411101
+
+threshold = 6.0, executed on mac
+-----> start time: 2018-12-06 12:18:34.813684
+-----> end time: 2018-12-06 12:22:07.498506
+-----> time it took to run the MRJob: 0:03:32.684822
+-----> items in output: 582115
+
 
 """
