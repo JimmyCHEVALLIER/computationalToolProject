@@ -36,15 +36,6 @@ def getWikiCategorie(strTitle):
                 data.append(urllib.parse.unquote(tag.attrs['href'].rsplit('/', 1)[-1]))
     return data
 
-#print(getWikiArticle('BABO'))
-#res = wikipedia.WikipediaPage(title="Bitters_and_Blue_Ruin")  # get HTML content of the article
-
-#print(getWikiCategorie('List of films: B'))
-
-# create a big list of all name and store it
-
-# create a file for each list with the data
-
 count = 0
 res = {}
 
@@ -59,7 +50,7 @@ lists= sorted(lists)
 print(lists)
 
 
-for element in lists[13:]: #[13:] replace by this to get the second part
+for element in lists: #[13:] replace by this to get the second part to split into 2 computers
     category = 'List of films: '+ element
     if os.path.exists(os.path.dirname(os.path.abspath(__file__))+ "/../_" + element + ".txt"):
         statinfo = os.stat(os.path.dirname(os.path.abspath(__file__))+ "/../_" + element + ".txt")
@@ -89,10 +80,5 @@ for element in lists[13:]: #[13:] replace by this to get the second part
 
                 with open('../_' + element + '.txt', 'w') as file:
                     file.write(json.dumps(res))  # use `json.loads` to do the reverse
-
-
-    #with open('/MOVIES/_' + element + '.txt', 'w') as file:
-    #    file.write(json.dumps(res))  # use `json.loads` to do the reverse
-
 
 print("done")
